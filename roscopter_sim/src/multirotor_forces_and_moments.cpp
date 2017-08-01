@@ -69,23 +69,21 @@ void MultiRotorForcesAndMoments::Load(physics::ModelPtr _model, sdf::ElementPtr 
   if (link_ == NULL)
     gzthrow("[multirotor_forces_and_moments] Couldn't find specified link \"" << link_name_ << "\".");
 
+  ROS_WARN("[multirotor_forces_and_moments] loading parameters in %s namespace", nh_private_.getNamespace().c_str());
+
   /* Load Params from Gazebo Server */
   getSdfParam<std::string>(_sdf, "windTopic", wind_topic_, "wind");
   getSdfParam<std::string>(_sdf, "commandTopic", command_topic_, "command");
   getSdfParam<std::string>(_sdf, "attitudeTopic", attitude_topic_, "attitude");
 
   /* Load Params from ROS Server */
-  mass_ = nh_private_.param<double>("mass", 3.856);
-  linear_mu_ = nh_private_.param<double>("linear_mu", 0.1);
-  angular_mu_ = nh_private_.param<double>("angular_mu", 0.5);
-
-  // Drag Constant
-  linear_mu_ = nh_private_.param<double>( "linear_mu", 0.8);
-  angular_mu_ = nh_private_.param<double>( "angular_mu", 0.5);
+  ROS_ASSERT(nh_private_.getParam("mass", mass_));
+  ROS_ASSERT(nh_private_.getParam("linear_mu", linear_mu_));
+  ROS_ASSERT(nh_private_.getParam("angular_mu", angular_mu_));
 
   /* Ground Effect Coefficients */
   std::vector<double> ground_effect_list = {-55.3516, 181.8265, -203.9874, 85.3735, -7.6619};
-  nh_private_.getParam("ground_effect", ground_effect_list);
+  ROS_ASSERT(nh_private_.getParam("ground_effect", ground_effect_list));
   ground_effect_.a = ground_effect_list[0];
   ground_effect_.b = ground_effect_list[1];
   ground_effect_.c = ground_effect_list[2];
@@ -93,36 +91,36 @@ void MultiRotorForcesAndMoments::Load(physics::ModelPtr _model, sdf::ElementPtr 
   ground_effect_.e = ground_effect_list[4];
 
   // Build Actuators Container
-  actuators_.l.max = nh_private_.param<double>("max_l", .2); // N-m
-  actuators_.m.max = nh_private_.param<double>("max_m", .2); // N-m
-  actuators_.n.max = nh_private_.param<double>("max_n", .2); // N-m
-  actuators_.F.max = nh_private_.param<double>("max_F", 1.0); // N
-  actuators_.l.tau_up = nh_private_.param<double>("tau_up_l", .25);
-  actuators_.m.tau_up = nh_private_.param<double>("tau_up_m", .25);
-  actuators_.n.tau_up = nh_private_.param<double>("tau_up_n", .25);
-  actuators_.F.tau_up = nh_private_.param<double>("tau_up_F", 0.25);
-  actuators_.l.tau_down = nh_private_.param<double>("tau_down_l", .25);
-  actuators_.m.tau_down = nh_private_.param<double>("tau_down_m", .25);
-  actuators_.n.tau_down = nh_private_.param<double>("tau_down_n", .25);
-  actuators_.F.tau_down = nh_private_.param<double>("tau_down_F", 0.35);
+  ROS_ASSERT(nh_private_.getParam("max_l", actuators_.l.max));
+  ROS_ASSERT(nh_private_.getParam("max_m", actuators_.m.max));
+  ROS_ASSERT(nh_private_.getParam("max_n", actuators_.n.max));
+  ROS_ASSERT(nh_private_.getParam("max_F", actuators_.F.max));
+  ROS_ASSERT(nh_private_.getParam("tau_up_l", actuators_.l.tau_up));
+  ROS_ASSERT(nh_private_.getParam("tau_up_m", actuators_.m.tau_up));
+  ROS_ASSERT(nh_private_.getParam("tau_up_n", actuators_.n.tau_up));
+  ROS_ASSERT(nh_private_.getParam("tau_up_F", actuators_.F.tau_up));
+  ROS_ASSERT(nh_private_.getParam("tau_down_l", actuators_.l.tau_down));
+  ROS_ASSERT(nh_private_.getParam("tau_down_m", actuators_.m.tau_down));
+  ROS_ASSERT(nh_private_.getParam("tau_down_n", actuators_.n.tau_down));
+  ROS_ASSERT(nh_private_.getParam("tau_down_F", actuators_.F.tau_down));
 
   // Get PID Gains
   double rollP, rollI, rollD;
   double pitchP, pitchI, pitchD;
   double yawP, yawI, yawD;
   double altP, altI, altD;
-  rollP = nh_private_.param<double>("roll_P", 0.1);
-  rollI = nh_private_.param<double>("roll_I", 0.0);
-  rollD = nh_private_.param<double>("roll_D", 0.0);
-  pitchP = nh_private_.param<double>("pitch_P", 0.1);
-  pitchI = nh_private_.param<double>("pitch_I", 0.0);
-  pitchD = nh_private_.param<double>("pitch_D", 0.0);
-  yawP = nh_private_.param<double>("yaw_P", 0.1);
-  yawI = nh_private_.param<double>("yaw_I", 0.0);
-  yawD = nh_private_.param<double>("yaw_D", 0.0);
-  altP = nh_private_.param<double>("alt_P", 0.1);
-  altI = nh_private_.param<double>("alt_I", 0.0);
-  altD = nh_private_.param<double>("alt_D", 0.0);
+  ROS_ASSERT(nh_private_.getParam("roll_P", rollP));
+  ROS_ASSERT(nh_private_.getParam("roll_I", rollI));
+  ROS_ASSERT(nh_private_.getParam("roll_D", rollD));
+  ROS_ASSERT(nh_private_.getParam("pitch_P", pitchP));
+  ROS_ASSERT(nh_private_.getParam("pitch_I", pitchI));
+  ROS_ASSERT(nh_private_.getParam("pitch_D", pitchD));
+  ROS_ASSERT(nh_private_.getParam("yaw_P", yawP));
+  ROS_ASSERT(nh_private_.getParam("yaw_I", yawI));
+  ROS_ASSERT(nh_private_.getParam("yaw_D", yawD));
+  ROS_ASSERT(nh_private_.getParam("alt_P", altP));
+  ROS_ASSERT(nh_private_.getParam("alt_I", altI));
+  ROS_ASSERT(nh_private_.getParam("alt_D", altD));
 
   roll_controller_.setGains(rollP, rollI, rollD);
   pitch_controller_.setGains(pitchP, pitchI, pitchD);

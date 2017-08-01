@@ -15,7 +15,10 @@
   <rosparam command="load" file="$(find roscopter)/params/multirotor.yaml"/>
 
   <!-- Estimator -->
-  <node name="mekf" pkg="roscopter" type="mekf" output="screen"/>
+  <node name="mekf" pkg="roscopter" type="mekf" output="screen">
+    <remap from="baro" to="bleh"/>
+    <remap from="sonar" to="bleh2"/>
+  </node>
 
 
   <!-- RC -->
