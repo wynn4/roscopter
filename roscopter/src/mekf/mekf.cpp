@@ -35,11 +35,11 @@ kalmanFilter::kalmanFilter() :
 
   // setup publishers and subscribers
   imu_sub_   = nh_.subscribe("imu/data", 1, &kalmanFilter::imuCallback, this);
-  baro_sub_  = nh_.subscribe("baro", 1, &kalmanFilter::baroCallback, this);
-  sonar_sub_ = nh_.subscribe("sonar", 1, &kalmanFilter::sonarCallback, this);
-  mag_sub_   = nh_.subscribe("magnetometer", 1, &kalmanFilter::magCallback, this);
-  gps_sub_   = nh_.subscribe("gps/data", 1, &kalmanFilter::gpsCallback, this);
-  status_sub_   = nh_.subscribe("status", 1, &kalmanFilter::statusCallback, this);
+  // baro_sub_  = nh_.subscribe("baro", 1, &kalmanFilter::baroCallback, this);
+  // sonar_sub_ = nh_.subscribe("sonar", 1, &kalmanFilter::sonarCallback, this);
+  // mag_sub_   = nh_.subscribe("magnetometer", 1, &kalmanFilter::magCallback, this);
+  // gps_sub_   = nh_.subscribe("gps/data", 1, &kalmanFilter::gpsCallback, this);
+  // status_sub_   = nh_.subscribe("status", 1, &kalmanFilter::statusCallback, this);
   // att_sub_   = nh_.subscribe("attitude", 1, &kalmanFilter::attitudeCallback, this);
 
   estimate_pub_  = nh_.advertise<nav_msgs::Odometry>("estimate", 1);
@@ -49,7 +49,7 @@ kalmanFilter::kalmanFilter() :
   is_flying_pub_ = nh_.advertise<std_msgs::Bool>("is_flying", 1);
 
   // initialize variables
-  flying_ = false;
+  flying_ = true;
   first_gps_msg_ = true;
   gps_lat0_ = 0;
   gps_lon0_ = 0;
