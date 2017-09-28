@@ -101,7 +101,7 @@ void kalmanFilter::imuCallback(const sensor_msgs::Imu msg)
     // run the filter
     current_time_ = msg.header.stamp;
     predictStep();
-    updateStep();
+    // updateStep();  // ignore for now since drag estimate doesn't work well...
     publishEstimate();
   }
   return;
