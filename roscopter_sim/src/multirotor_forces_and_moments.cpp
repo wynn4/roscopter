@@ -246,7 +246,7 @@ void MultiRotorForcesAndMoments::UpdateForcesAndMoments()
   else if (command_.mode == rosflight_msgs::Command::MODE_ROLL_PITCH_YAWRATE_ALTITUDE)
   {
     // desired_forces_.l = roll_controller_.computePID(command_.x, phi,  sampling_time_, p);
-    desired_forces_.m = pitch_controller_.computePID(command_.y, theta, sampling_time_, q);
+    // desired_forces_.m = pitch_controller_.computePID(command_.y, theta, sampling_time_, q);
     desired_forces_.n = yaw_controller_.computePID(command_.z, r, sampling_time_);
     // double pddot = -sin(theta)*u + sin(phi)*cos(theta)*v + cos(phi)*cos(theta)*w;
     // double p1 = alt_controller_.computePID(command_.F, -pd, sampling_time_, -pddot);
@@ -290,7 +290,7 @@ void MultiRotorForcesAndMoments::UpdateForcesAndMoments()
     double phi_dot = p;
     double phi_ddot_des = 0.0;
     double phi_des = command_.x;
-    double theta_dot = -q;
+    double theta_dot = q;
     double psi_dot = -r;
     double s_r = (phi_dot_des - phi_dot) + lambda_r*(phi_des - phi);
 
@@ -306,13 +306,15 @@ void MultiRotorForcesAndMoments::UpdateForcesAndMoments()
     double delta_p = 0.3;
 
     double theta_dot_des = 0.0;
-    theta = -theta;
-    double theta_des = -command_.y;
+    double theta_ddot_des = 0.0;
+    //theta = -theta;
+    double theta_des = command_.y;
     double s_p = (theta_dot_des - theta_dot) + lambda_p*(theta_des - theta);
 
-    
+    double u3 = (lambda_p*(theta_dot_des - theta_dot) + theta_ddot_des - phi_dot*psi_dot*((Iz-Ix)/Iy) - (Jr/Iy)*theta_dot*Omega_) * (Iy/len) + kd_p * (s_p/(abs(s_p) + delta_p));
 
-    double u3 = desired_forces_.m;
+    desired_forces_.m = u3;
+    gzmsg << std::to_string(u3) << std::endl;
     double u4 = desired_forces_.n;
 
     double Omega1 = sqrt(abs(u1*b_factor + u2*b_factor + u3*b_factor + u4*b_factor));
