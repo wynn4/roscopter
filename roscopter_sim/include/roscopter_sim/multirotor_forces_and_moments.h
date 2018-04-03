@@ -120,6 +120,9 @@ private:
 
   rosflight_msgs::Command command_;
 
+  // sliding mode stuff
+  double Omega_;
+
   // Time Counters
   double sampling_time_;
   double prev_sim_time_;

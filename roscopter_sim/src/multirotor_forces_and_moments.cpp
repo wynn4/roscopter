@@ -129,6 +129,9 @@ void MultiRotorForcesAndMoments::Load(physics::ModelPtr _model, sdf::ElementPtr 
   yaw_controller_.setGains(yawP, yawI, yawD);
   alt_controller_.setGains(altP, altI, altD);
 
+  // Sliding-Mode setup
+  Omega_ = 0.0;
+
   // Connect the update function to the simulation
   updateConnection_ = event::Events::ConnectWorldUpdateBegin(boost::bind(&MultiRotorForcesAndMoments::OnUpdate, this, _1));
 
@@ -242,17 +245,27 @@ void MultiRotorForcesAndMoments::UpdateForcesAndMoments()
   }
   else if (command_.mode == rosflight_msgs::Command::MODE_ROLL_PITCH_YAWRATE_ALTITUDE)
   {
-    desired_forces_.l = roll_controller_.computePID(command_.x, phi,  sampling_time_, p);
+    // desired_forces_.l = roll_controller_.computePID(command_.x, phi,  sampling_time_, p);
     desired_forces_.m = pitch_controller_.computePID(command_.y, theta, sampling_time_, q);
     desired_forces_.n = yaw_controller_.computePID(command_.z, r, sampling_time_);
     // double pddot = -sin(theta)*u + sin(phi)*cos(theta)*v + cos(phi)*cos(theta)*w;
     // double p1 = alt_controller_.computePID(command_.F, -pd, sampling_time_, -pddot);
     // desired_forces_.Fz = p1  + (mass_*9.80665)/(cos(command_.x)*cos(command_.y));
 
+    // Sliding-Mode global tuning params
+    double b_factor = 0.001;
+    double len = 0.2;
+
+    double Ix = 0.07;
+    double Iy = 0.08;
+    double Iz = 0.12;
+    double Jr = 0.0001;
+
+    // Sliding-Mode Thrust Axis
     // tuning params
-    double lambda = 5.0;
-    double kd = 10.0;
-    double delta = 0.7;
+    double lambda_t = 5.0;
+    double kd_t = 10.0;
+    double delta_t = 0.7;
 
     double g = 9.80665;
     double z_des = command_.F;
@@ -261,11 +274,55 @@ void MultiRotorForcesAndMoments::UpdateForcesAndMoments()
     double z_ddot_des = 0.0;
     double z = -pd;
     double edot = z_dot_des - z_dot;
-    double s = (z_dot_des - z_dot) + lambda * (z_des - z);
+    double s_t = (z_dot_des - z_dot) + lambda_t * (z_des - z);
 
-    double u1 = (g + lambda*edot + z_ddot_des) * (mass_/(cos(phi)*cos(psi))) + kd * (s/(abs(s) + delta));
+    double u1 = (g + lambda_t*edot + z_ddot_des) * (mass_/(cos(phi)*cos(psi))) + kd_t * (s_t/(abs(s_t) + delta_t));
     desired_forces_.Fz = u1;
-    gzmsg << std::to_string(u1) << std::endl;
+    // gzmsg << std::to_string(u1) << std::endl;
+
+    // Sliding-Mode Roll Axis
+    // tuning params
+    double lambda_r = 5.0;
+    double kd_r = 100.0;
+    double delta_r = 0.3;
+
+    double phi_dot_des = 0.0;
+    double phi_dot = p;
+    double phi_ddot_des = 0.0;
+    double phi_des = command_.x;
+    double theta_dot = -q;
+    double psi_dot = -r;
+    double s_r = (phi_dot_des - phi_dot) + lambda_r*(phi_des - phi);
+
+    double u2 = (lambda_r*(phi_dot_des - phi_dot) + phi_ddot_des - theta_dot*psi_dot*((Iy-Iz)/Ix) + (Jr/Ix)*theta_dot*Omega_) * (Ix/len) + kd_r * (s_r/(abs(s_r) + delta_r));
+    // double test_term = ((Iy-Iz)/Ix);
+    desired_forces_.l = u2;
+    // gzmsg << std::to_string(u2) << std::endl;
+
+    // Sliding-Mode Pitch Axis
+    // tuning params
+    double lambda_p = 5.0;
+    double kd_p = 100.0;
+    double delta_p = 0.3;
+
+    double theta_dot_des = 0.0;
+    theta = -theta;
+    double theta_des = -command_.y;
+    double s_p = (theta_dot_des - theta_dot) + lambda_p*(theta_des - theta);
+
+    
+
+    double u3 = desired_forces_.m;
+    double u4 = desired_forces_.n;
+
+    double Omega1 = sqrt(abs(u1*b_factor + u2*b_factor + u3*b_factor + u4*b_factor));
+    double Omega2 = sqrt(abs(-u2*b_factor + u4*b_factor));
+    double Omega3 = sqrt(abs(-u1*b_factor + u3*b_factor));
+    double Omega4 = sqrt(abs(-u1*len + u2*len - u3*len + u4*len));
+
+    // gzmsg << std::to_string(Omega2) << std::endl;
+
+    Omega_ = -Omega1 + Omega2 -Omega3 + Omega4;
   }
 
   // calculate the actual output force using low-pass-filters to introduce a first-order
