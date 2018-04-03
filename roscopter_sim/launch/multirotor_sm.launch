@@ -12,7 +12,7 @@
   <include file="$(find gazebo_ros)/launch/empty_world.launch">
     <arg name="paused" value="true"/>
     <arg name="gui" value="true"/>
-    <arg name="verbose" value="true"/>
+    <arg name="verbose" value="false"/>
     <arg name="debug" value="$(arg debug)"/>
   </include>
 
@@ -47,9 +47,9 @@
     </node>
 
     <!-- PID Position Controller -->
-    <node name="controller" pkg="ibvs_sim" type="controller_rpya.py">
-      <remap from="estimate" to="ground_truth/odometry/NED"/>
-      <!-- <remap from="estimate" to="estimate"/> -->
+    <node name="controller" pkg="ibvs_sim" type="controller_sliding_mode.py">
+      <!-- <remap from="estimate" to="ground_truth/odometry/NED"/> -->
+      <remap from="estimate" to="estimate"/>
     </node>
 
     <!-- Waypoint Manager -->

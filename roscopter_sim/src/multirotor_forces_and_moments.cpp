@@ -131,6 +131,7 @@ void MultiRotorForcesAndMoments::Load(physics::ModelPtr _model, sdf::ElementPtr 
 
   // Sliding-Mode setup
   Omega_ = 0.0;
+  sm_count_ = 0;
 
   // Connect the update function to the simulation
   updateConnection_ = event::Events::ConnectWorldUpdateBegin(boost::bind(&MultiRotorForcesAndMoments::OnUpdate, this, _1));
@@ -235,6 +236,7 @@ void MultiRotorForcesAndMoments::UpdateForcesAndMoments()
     desired_forces_.m = pitch_controller_.computePID(command_.y, q, sampling_time_);
     desired_forces_.n = yaw_controller_.computePID(command_.z, r, sampling_time_);
     desired_forces_.Fz = command_.F*actuators_.F.max; // this comes in normalized between 0 and 1
+    // gzmsg << "Doing PID" << std::endl;
   }
   else if (command_.mode == rosflight_msgs::Command::MODE_ROLL_PITCH_YAWRATE_THROTTLE)
   {
@@ -242,15 +244,19 @@ void MultiRotorForcesAndMoments::UpdateForcesAndMoments()
     desired_forces_.m = pitch_controller_.computePID(command_.y, theta, sampling_time_, q);
     desired_forces_.n = yaw_controller_.computePID(command_.z, r, sampling_time_);
     desired_forces_.Fz = command_.F*actuators_.F.max;
+    // gzmsg << "Doing PID" << std::endl;
   }
   else if (command_.mode == rosflight_msgs::Command::MODE_ROLL_PITCH_YAWRATE_ALTITUDE)
   {
     // desired_forces_.l = roll_controller_.computePID(command_.x, phi,  sampling_time_, p);
     // desired_forces_.m = pitch_controller_.computePID(command_.y, theta, sampling_time_, q);
-    desired_forces_.n = yaw_controller_.computePID(command_.z, r, sampling_time_);
+    // desired_forces_.n = yaw_controller_.computePID(command_.z, r, sampling_time_);
     // double pddot = -sin(theta)*u + sin(phi)*cos(theta)*v + cos(phi)*cos(theta)*w;
     // double p1 = alt_controller_.computePID(command_.F, -pd, sampling_time_, -pddot);
     // desired_forces_.Fz = p1  + (mass_*9.80665)/(cos(command_.x)*cos(command_.y));
+    sm_count_ ++;
+
+    // gzmsg << "sliding moding! " << std::to_string(sm_count_) << std::endl;
 
     // Sliding-Mode global tuning params
     double b_factor = 0.001;
@@ -276,7 +282,7 @@ void MultiRotorForcesAndMoments::UpdateForcesAndMoments()
     double edot = z_dot_des - z_dot;
     double s_t = (z_dot_des - z_dot) + lambda_t * (z_des - z);
 
-    double u1 = (g + lambda_t*edot + z_ddot_des) * (mass_/(cos(phi)*cos(psi))) + kd_t * (s_t/(abs(s_t) + delta_t));
+    double u1 = ((g + lambda_t*edot + z_ddot_des) * (mass_/(cos(phi)*cos(theta)))) + kd_t * (s_t/(abs(s_t) + delta_t));
     desired_forces_.Fz = u1;
     // gzmsg << std::to_string(u1) << std::endl;
 
@@ -291,7 +297,7 @@ void MultiRotorForcesAndMoments::UpdateForcesAndMoments()
     double phi_ddot_des = 0.0;
     double phi_des = command_.x;
     double theta_dot = q;
-    double psi_dot = -r;
+    double psi_dot = r;
     double s_r = (phi_dot_des - phi_dot) + lambda_r*(phi_des - phi);
 
     double u2 = (lambda_r*(phi_dot_des - phi_dot) + phi_ddot_des - theta_dot*psi_dot*((Iy-Iz)/Ix) + (Jr/Ix)*theta_dot*Omega_) * (Ix/len) + kd_r * (s_r/(abs(s_r) + delta_r));
@@ -314,15 +320,29 @@ void MultiRotorForcesAndMoments::UpdateForcesAndMoments()
     double u3 = (lambda_p*(theta_dot_des - theta_dot) + theta_ddot_des - phi_dot*psi_dot*((Iz-Ix)/Iy) - (Jr/Iy)*theta_dot*Omega_) * (Iy/len) + kd_p * (s_p/(abs(s_p) + delta_p));
 
     desired_forces_.m = u3;
-    gzmsg << std::to_string(u3) << std::endl;
-    double u4 = desired_forces_.n;
+    // gzmsg << std::to_string(u3) << std::endl;
 
+    // Sliding-Mode Yaw Axis
+    // tuning params
+    double lambda_y = 5.0;
+    double kd_y = 100.0;
+    double delta_y = 0.3;
+
+    double psi_dot_des = 0.0;
+    double psi_ddot_des = 0.0;
+    double psi_des = command_.z;
+
+    double s_y = (psi_dot_des - psi_dot) + lambda_y*(psi_des - psi);
+
+    double u4 = (lambda_y*(psi_dot_des - psi_dot) + psi_ddot_des - theta_dot*phi_dot*((Ix-Iy)/Iz))*Iz + kd_y * (s_y/(abs(s_y) + delta_y));
+
+    desired_forces_.n = u4;
+
+    // compute Omega factor and store as class variable for access each loop
     double Omega1 = sqrt(abs(u1*b_factor + u2*b_factor + u3*b_factor + u4*b_factor));
     double Omega2 = sqrt(abs(-u2*b_factor + u4*b_factor));
     double Omega3 = sqrt(abs(-u1*b_factor + u3*b_factor));
     double Omega4 = sqrt(abs(-u1*len + u2*len - u3*len + u4*len));
-
-    // gzmsg << std::to_string(Omega2) << std::endl;
 
     Omega_ = -Omega1 + Omega2 -Omega3 + Omega4;
   }

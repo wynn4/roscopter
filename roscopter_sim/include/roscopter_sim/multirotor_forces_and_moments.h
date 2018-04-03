@@ -122,6 +122,7 @@ private:
 
   // sliding mode stuff
   double Omega_;
+  int sm_count_;
 
   // Time Counters
   double sampling_time_;
